@@ -2,32 +2,18 @@
 
 # cellpacman
 
-> **PAinted Cell and coMpound ANalysis (PACMAN) — concentration trajectories for Cell Painting screens**
+`cellpacman` interprets a Cell Painting screen in which **known** compounds
+are tested over a concentration series and **unknown** compounds at a single
+concentration. Each known compound's graded morphological response is
+summarized as a **concentration trajectory** — a principal curve through its
+concentration-ordered DBSCAN centroids in a UMAP embedding of within-plate
+standardized features — and each unknown cluster is projected onto these
+trajectories, which yields the most similar known compound, an interpolated
+effective concentration, and a distance that says how well the match fits.
+Rank-based feature selection then explains *which* morphological features
+drive a trajectory or separate two groups of wells.
 
-![version](https://img.shields.io/badge/version-0.1.0-1F3A5F)
-![R](https://img.shields.io/badge/R-%E2%89%A5%204.1.0-1F3A5F)
-![license](https://img.shields.io/badge/license-MIT-1F3A5F)
-![platform](https://img.shields.io/badge/data-Cell%20Painting%20%7C%20Harmony%20exports-1F3A5F)
-![app](https://img.shields.io/badge/interface-R%20Shiny-1F3A5F)
-
-`cellpacman` answers two questions about a Cell Painting screen that mixes
-**known** compounds, tested over a concentration series, with **unknown**
-compounds tested at a single concentration — *which known compound does an
-unknown resemble, and at what effective concentration?* It summarizes the
-graded morphological response of every known compound as a **concentration
-trajectory** — a principal curve through the concentration-ordered DBSCAN
-centroids of that compound in a UMAP embedding of within-plate standardized
-features — and interprets unknown compounds by projecting their clusters onto
-these trajectories.
-
-Unlike a nearest-neighbour or classifier lookup against a reference library,
-the trajectory is a *continuous* object with an arc-length ↔ concentration
-calibration, so an unknown is placed *between* tested concentrations rather
-than assigned to one of them, and the distance from the curve reports how well
-the match fits. Rank-based feature selection then explains *which*
-morphological features drive a trajectory or separate two groups of wells.
-
-▶ **Interactive app (R Shiny):** [`cellpacman-shiny/`](cellpacman-shiny) — the full workflow in a browser, with background computation
+▶ **Interactive app (R Shiny):** `cellpacman::runCellPACMAN()` — the full workflow in a browser ([`inst/shiny/`](inst/shiny))
 
 ▶ **Documentation:** [`vignettes/getting-started.Rmd`](vignettes/getting-started.Rmd) · [`vignettes/shiny-app.Rmd`](vignettes/shiny-app.Rmd) · [`cellpacman_0.1.0_manual.pdf`](cellpacman_0.1.0_manual.pdf)
 
@@ -35,33 +21,23 @@ morphological features drive a trajectory or separate two groups of wells.
 
 ## Highlights
 
-- **Two-table input, one validated object** — a numeric well × feature table
-  and a plate annotation sharing `WellId`; `Compound = NA` marks unknown wells
+- **Validated two-table input** — a numeric well × feature table and a plate
+  annotation sharing `WellId`; `Compound = NA` marks unknown wells
   (`loadCellPainting()`).
-- **Within-plate standardization** — every feature is z-scored per plate
-  (`normalize()`, any `by` grouping), removing plate effects before geometry
-  is computed.
-- **Per-compound density clustering** — DBSCAN run separately for each known
-  compound and jointly for unknown wells; noise is labelled rather than forced
-  into clusters (`compoundCluster()`).
-- **Concentration trajectories** — a principal curve (Hastie & Stuetzle, 1989)
-  initialized at the concentration-ordered centroid polyline, with each
-  centroid's arc length recorded as a calibration reference
-  (`curveEstimate()`).
-- **Projection with interpolation** — unknown-cluster centroids are projected
-  onto every trajectory; the arc length is mapped to a concentration by
-  piecewise-linear interpolation between references, and the nearest
-  trajectory is the best match (`curveProject()`).
-- **Rank-based feature selection** — Wilcoxon rank-sum tests with
-  median-difference effect sizes along a trajectory (`selectFeatureCurve()`),
-  between unknown clusters (`selectFeatureCluster()`), and between any two
-  compounds or clusters (`compareCompoundFeatures()`,
-  `compareClusterFeatures()`).
-- **Interactive front end** — a Shiny application that calls the same API,
-  runs every stage in background R processes, and gates each tab on the stage
-  before it.
-- **Bundled example screen** — five 384-well plates, 664 features, three
-  compounds in eight-point series, 1,600 unknown wells (`exampleDataPath()`).
+- **Within-plate standardization and UMAP** — plate effects are removed
+  before any geometry is computed (`normalize()`, `dimReduce()`).
+- **Per-compound DBSCAN → principal-curve trajectory** — centroids ordered by
+  concentration seed the curve, and their arc lengths calibrate it
+  (`compoundCluster()`, `curveEstimate()`).
+- **Projection with interpolation** — unknown clusters are placed *between*
+  tested concentrations, and the nearest trajectory is the best match
+  (`curveProject()`).
+- **Rank-based feature selection** — Wilcoxon tests with median-difference
+  effect sizes along a trajectory, between unknown clusters, or between any
+  two compounds or clusters (`selectFeature*()`, `compare*Features()`).
+- **Shiny front end and example screen** — `runCellPACMAN()` runs every stage
+  in background R processes; `exampleDataPath()` ships five 384-well plates
+  with three compounds in eight-point series and 1,600 unknown wells.
 
 ---
 
