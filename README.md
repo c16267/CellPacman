@@ -5,9 +5,9 @@
 `cellpacman` interprets a Cell Painting screen in which **known** compounds
 are tested over a concentration series and **unknown** compounds at a single
 concentration. Each known compound's graded morphological response is
-summarized as a **concentration trajectory** — a principal curve through its
+summarized as a **concentration trajectory** , a principal curve through its
 concentration-ordered DBSCAN centroids in a UMAP embedding of within-plate
-standardized features — and each unknown cluster is projected onto these
+standardized features, and each unknown cluster is projected onto these
 trajectories, which yields the most similar known compound, an interpolated
 effective concentration, and a distance that says how well the match fits.
 Rank-based feature selection then explains *which* morphological features
@@ -21,21 +21,21 @@ drive a trajectory or separate two groups of wells.
 
 ## Highlights
 
-- **Validated two-table input** — a numeric well × feature table and a plate
+- **Validated two-table input** : a numeric well × feature table and a plate
   annotation sharing `WellId`; `Compound = NA` marks unknown wells
   (`loadCellPainting()`).
-- **Within-plate standardization and UMAP** — plate effects are removed
+- **Within-plate standardization and UMAP** : plate effects are removed
   before any geometry is computed (`normalize()`, `dimReduce()`).
-- **Per-compound DBSCAN → principal-curve trajectory** — centroids ordered by
+- **Per-compound DBSCAN → principal-curve trajectory** : centroids ordered by
   concentration seed the curve, and their arc lengths calibrate it
   (`compoundCluster()`, `curveEstimate()`).
-- **Projection with interpolation** — unknown clusters are placed *between*
+- **Projection with interpolation** : unknown clusters are placed *between*
   tested concentrations, and the nearest trajectory is the best match
   (`curveProject()`).
-- **Rank-based feature selection** — Wilcoxon tests with median-difference
+- **Rank-based feature selection** : Wilcoxon tests with median-difference
   effect sizes along a trajectory, between unknown clusters, or between any
   two compounds or clusters (`selectFeature*()`, `compare*Features()`).
-- **Shiny front end and example screen** — `runCellPACMAN()` runs every stage
+- **Shiny front end and example screen** : `runCellPACMAN()` runs every stage
   in background R processes; `exampleDataPath()` ships five 384-well plates
   with three compounds in eight-point series and 1,600 unknown wells.
 
