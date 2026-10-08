@@ -1,0 +1,43 @@
+Package: cellpacman
+Title: PAinted Cell and coMpound ANalysis (PACMAN)
+Version: 0.1.0
+Authors@R:
+    person("Garrett", "Kinnebrew", , "garrett.kinnebrew@osumc.edu", role = c("aut", "cre"))
+Description: Concentration-response analysis of Cell Painting morphological
+    profiles. Well-level features are z-score normalized within plate,
+    embedded in two dimensions with UMAP, and clustered with DBSCAN separately
+    for each known compound and jointly for unknown (unannotated) wells. A
+    principal curve fitted through the concentration-ordered cluster centroids
+    of each known compound defines a concentration trajectory; unknown clusters
+    are projected onto every trajectory to identify the most similar known
+    compound and an interpolated effective concentration. Wilcoxon rank-sum
+    tests with multiplicity correction identify features that change along a
+    trajectory, that discriminate unknown clusters, or that separate any two
+    compounds or clusters. The package has no graphical dependencies beyond
+    'ggplot2' and 'plotly'; an interactive Shiny front end is distributed
+    separately as the 'cellpacman-shiny' application.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Depends:
+    R (>= 4.1.0)
+Imports:
+    dbscan,
+    dplyr,
+    ggplot2 (>= 3.4.0),
+    magrittr,
+    plotly,
+    princurve,
+    readr,
+    readxl,
+    tibble,
+    tidyr,
+    umap,
+    viridisLite
+Suggests:
+    ggrepel,
+    knitr,
+    rmarkdown,
+    testthat
+VignetteBuilder: knitr
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.1

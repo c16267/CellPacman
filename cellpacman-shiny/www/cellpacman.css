@@ -1,0 +1,61 @@
+/* cellpacman Shiny application styles.
+ * Attached to the UI by app_ui() through an htmltools::htmlDependency(). */
+
+/* Navigation links are disabled until the upstream analysis stage is ready. */
+.navbar .nav-link.disabled {
+  color: rgba(33, 37, 41, 0.35) !important;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Cards that host a plotly widget must let the widget fill the card body. */
+.plot-card,
+.plot-card > .card-body {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.plot-card > .card-body {
+  display: flex;
+  flex-direction: column;
+}
+
+.plot-fill,
+.plot-fill .shiny-spinner-output-container {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  width: 100%;
+}
+
+.plot-fill .html-widget,
+.plot-fill .js-plotly-plot,
+.plot-fill .plot-container,
+.plot-fill .svg-container {
+  height: 100% !important;
+  max-height: 100%;
+  width: 100% !important;
+}
+
+/* Two equal-height rows of cards inside each analysis tab. */
+.app-panel-grid {
+  height: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+}
+
+.app-panel-row {
+  height: 100%;
+  min-height: 0;
+}
+
+/* Collapsible parameter blocks in the sidebars. */
+.app-sidebar-parameters {
+  margin-top: 1rem;
+}
+
+.app-sidebar-parameters-content {
+  padding-top: 0.75rem;
+}

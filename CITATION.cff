@@ -1,0 +1,33 @@
+cff-version: 1.2.0
+message: "If you use cellpacman, please cite it as below."
+type: software
+title: "cellpacman: PAinted Cell and coMpound ANalysis (PACMAN) - concentration trajectories for Cell Painting screens"
+version: 0.1.0
+date-released: "2026-10-08"
+license: MIT
+repository-code: "https://github.com/c16267/cellpacman"
+# TODO: complete the author list and order before release.
+authors:
+  - family-names: Kinnebrew
+    given-names: Garrett
+    email: garrett.kinnebrew@osumc.edu
+    affiliation: "The Ohio State University"
+keywords:
+  - Cell Painting
+  - high-content screening
+  - concentration-response
+  - principal curves
+  - UMAP
+  - DBSCAN
+  - R package
+  - Shiny
+abstract: >-
+  cellpacman models the graded morphological response of each known compound
+  in a Cell Painting screen as a concentration trajectory - a principal curve
+  through the concentration-ordered DBSCAN centroids of that compound in a UMAP
+  embedding of within-plate standardized features - and interprets unannotated
+  compounds by projecting them onto these trajectories, which yields the most
+  similar known compound and an interpolated effective concentration.
+  Rank-based feature selection explains which morphological features drive a
+  trajectory or separate two groups of wells. A companion Shiny application
+  exposes the workflow interactively.

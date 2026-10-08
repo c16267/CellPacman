@@ -1,0 +1,389 @@
+---
+title: "Getting started with cellpacman"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 2
+vignette: >
+  %\VignetteIndexEntry{Getting started with cellpacman}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE, comment = "#>",
+  message = FALSE, warning = FALSE,
+  fig.width = 7, fig.height = 4.5, out.width = "100%",
+  eval = TRUE
+)
+```
+
+```{css, echo = FALSE}
+.main-container { max-width: 1300px !important; }
+img { max-width: 100% !important; }
+```
+
+## Overview
+
+`cellpacman` (PAinted Cell and coMpound ANalysis) models how cell morphology
+changes as the concentration of a compound increases, using well-level Cell
+Painting features. For every *known* compound, i.e. one tested over a
+concentration series, the package summarizes the morphological response as a
+one-dimensional curve in a low-dimensional embedding: a **concentration
+trajectory**. *Unknown* compounds, tested at a single concentration without
+annotation, are then interpreted by projecting them onto these trajectories,
+which yields both the most similar known compound and an interpolated
+effective concentration.
+
+The workflow is a chain of six functions. Each returns an S3 object that is
+the input of the next, so intermediate results can be inspected, plotted, or
+re-used:
+
+| Step | Function | Output class | What it does |
+| --- | --- | --- | --- |
+| 1 | `loadCellPainting()` | `cellpainting_data` | Reads and validates the feature and metadata tables. |
+| 2 | `normalize()` | `cellpainting_normalized` | z-scores every feature within plate. |
+| 3 | `dimReduce()` | `cellpainting_dimred` | Embeds the normalized profiles in two dimensions with UMAP. |
+| 4 | `compoundCluster()` | `cellpainting_clusters` | Runs DBSCAN per known compound and jointly on the unknown wells. |
+| 5 | `curveEstimate()` | `cellpainting_curves` | Fits a principal curve through each known compound's concentration-ordered centroids. |
+| 6 | `curveProject()` | list | Projects unknown-cluster centroids onto every trajectory and interpolates a concentration. |
+
+Two feature-selection functions (`selectFeatureCurve()`,
+`selectFeatureCluster()`) and two pairwise comparison functions
+(`compareCompoundFeatures()`, `compareClusterFeatures()`) then explain *which*
+features drive a trajectory or separate two groups of wells. This vignette
+runs the complete workflow on the example screen bundled with the package.
+
+```{r libraries}
+library(cellpacman)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+## Input data
+
+`cellpacman` expects two tables that share a `WellId` key:
+
+* a **feature table** whose first column is `WellId` and whose remaining
+  columns are numeric morphological features (one row per well), and
+* a **metadata table** with at least `WellId`, `Plate`, `Compound`, and
+  `Concentration`. Any additional columns are carried along unchanged.
+
+`Compound` encodes the known/unknown distinction: a non-missing value marks a
+well of a known compound, and `NA` marks an unknown well. `Concentration` must
+be numeric and is only used for known compounds. Both tables may be supplied as
+data frames or as paths to `csv`, `tsv`, `txt`, or `xlsx` files.
+
+### The example screen
+
+The package ships a Cell Painting screen of 1,920 wells from five 384-well
+plates with 664 well-level features (`exampleDataPath()`). Each plate contains
+three annotated compounds---axitinib (`Axit`), cabozantinib (`Cabo`), and
+dactinomycin (`Dacti`)---at eight concentrations in duplicate, 16 wells of the
+DMSO vehicle control, and 320 unannotated wells that enter the analysis as
+unknown compounds.
+
+```{r load}
+dat <- loadCellPainting(
+  file.feature  = exampleDataPath("features"),
+  file.metadata = exampleDataPath("metadata")
+)
+
+dim(dat$feature_data)
+dat$metadata |>
+  mutate(Compound = ifelse(is.na(Compound), "(unknown)", Compound)) |>
+  group_by(Compound) |>
+  summarise(
+    wells = n(),
+    plates = n_distinct(Plate),
+    concentrations = n_distinct(Concentration, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  knitr::kable()
+```
+
+### Preparing your own input
+
+Instrument software usually exports one wide table per plate that mixes
+features and annotation. The example tables were produced from such an export
+by splitting on the column names; feature columns from Harmony all contain
+`"NonBorder Cells"`. `readCellPainting()` preserves column names that contain
+spaces, so the same split works on a fresh export:
+
+```{r split, eval = FALSE}
+raw <- readCellPainting("PlateResults.tsv")
+
+feature_tbl  <- raw |> select(WellId, contains("NonBorder Cells"))
+metadata_tbl <- raw |> select(!contains("NonBorder Cells"))
+
+dat <- loadCellPainting(feature_tbl, metadata_tbl)
+```
+
+`loadCellPainting()` rejects duplicated `WellId`s, non-numeric feature
+columns, missing required metadata columns, and feature wells without
+metadata, so malformed input fails at this step rather than deep inside the
+analysis.
+
+## Preprocessing
+
+### Within-plate standardization
+
+Raw morphological features are measured on incommensurable scales and are
+subject to plate-level technical variation. `normalize()` therefore
+standardizes every feature within each plate: for feature $j$ on plate $k$,
+each well value $x_{ijk}$ is replaced by
+$z_{ijk} = (x_{ijk} - \bar{x}_{jk}) / s_{jk}$, where $\bar{x}_{jk}$ and
+$s_{jk}$ are the mean and standard deviation over all wells of that plate.
+Features with zero variance on a plate are set to 0. The `by` argument accepts
+any set of metadata columns, so standardization can also be stratified by
+batch or cell line.
+
+```{r normalize}
+dat_norm <- normalize(dat, method = "z.score", by = "Plate")
+```
+
+Standardizing against all wells on a plate (rather than against the vehicle
+controls alone) assumes that most wells show a modest phenotype; this holds
+for the typical screen in which unknown wells dominate the plate. The
+normalized object `dat_norm` is reused by every feature-selection step below.
+
+### Two-dimensional embedding
+
+`dimReduce()` embeds the standardized profiles into two dimensions with UMAP
+(`umap::umap()`, `n_components = 2`, `min_dist = 0.25`). The embedding is
+deterministic for a given `random_seed`. Subsequent steps operate on these two
+coordinates, stored as `x` and `y` in `reduced_data` together with the
+metadata.
+
+```{r dimreduce}
+dat_dr <- dimReduce(dat_norm, method = "umap", random_seed = 1)
+head(dat_dr$reduced_data[, c("WellId", "Plate", "Compound", "Concentration", "x", "y")])
+```
+
+`plotDimred()` draws the embedding with unknown wells in gray and known
+compounds in color:
+
+```{r plot-dimred, fig.height = 5}
+plotDimred(dat_dr)
+```
+
+Colouring the same embedding by plate is a useful check that the within-plate
+standardization has removed plate effects: the five plates should overlap
+rather than form separate islands.
+
+```{r plot-plate, fig.height = 5}
+ggplot(dat_dr$reduced_data, aes(x, y, colour = Plate)) +
+  geom_point(size = 0.6, alpha = 0.7) +
+  labs(x = "DIM1", y = "DIM2", title = "UMAP embedding coloured by plate") +
+  theme_bw()
+```
+
+## Clustering
+
+Replicate wells of the same compound at the same concentration are expected to
+occupy a common region of the embedding. `compoundCluster()` recovers these
+groups with DBSCAN (`eps`, `minPts`), run
+
+* **separately for each known compound**, using only that compound's wells, and
+* **jointly for all unknown wells**.
+
+DBSCAN labels points that do not belong to any dense region as noise (cluster
+`"0"`). For each cluster the function records its centroid and, for known
+compounds, the mean concentration of its members; known-compound clusters are
+sorted by this mean concentration, which is what orders them along the
+trajectory in the next step.
+
+```{r cluster}
+clusters <- compoundCluster(dat_dr, method = "dbscan", eps = 0.5, minPts = 5)
+
+sapply(clusters$known_clusters, nrow)   # clusters per known compound
+clusters$unknown_centroids              # unknown clusters
+```
+
+For the unknown wells, clustering is the primary result: each cluster is a
+candidate phenotype that will be matched to a known compound.
+
+```{r plot-unknown-clusters, fig.height = 5}
+plotUnknownClusters(clusters)
+```
+
+For a known compound, the clusters summarize the concentration series. The
+centroids (diamonds) are labelled with the mean concentration of their wells:
+
+```{r plot-known-clusters, fig.height = 5}
+plotKnownClusters(clusters, compound = "Cabo")
+```
+
+`eps` controls how finely a concentration series is resolved. A compound whose
+wells form a single connected region at a given `eps` yields only one cluster
+and therefore no trajectory; decreasing `eps` resolves sub-clusters, at the
+cost of labelling more wells as noise. With `eps = 0.5` the dactinomycin wells
+form one cluster, so no curve is fitted for `Dacti` below.
+
+## Concentration trajectories
+
+`curveEstimate()` summarizes the graded morphological response of each known
+compound by a **principal curve** (Hastie and Stuetzle, 1989) fitted to that compound's
+non-noise wells (`princurve::principal_curve()`, `smoother = "lowess"` by
+default). The fit is initialized at the polyline that connects the cluster
+centroids in order of increasing mean concentration, so the curve runs from
+the low-concentration phenotype to the high-concentration phenotype. The arc
+length $\lambda$ along the fitted curve is a pseudo-concentration axis.
+
+Each centroid is mapped to the nearest point of the curve, which gives a set of
+reference pairs $(\lambda_r, c_r)$ of arc length and mean concentration. These
+pairs are the calibration that turns a position on the curve into an
+estimated concentration. A curve requires at least two clusters; compounds
+with fewer are skipped.
+
+```{r curves}
+curves <- curveEstimate(dat_dr, method = "princurve", eps = 0.5, minPts = 5, smoother = "lowess")
+
+names(curves$curves)
+curves$curves[["Cabo"]]$ref_points
+```
+
+The remainder of this vignette focuses on cabozantinib (`"Cabo"`).
+
+```{r plot-known-curve, fig.width = 8, fig.height = 3.5}
+focus_compound <- "Cabo"
+plotKnownCurves(curves, compound = focus_compound)
+```
+
+## Matching unknown compounds to trajectories
+
+`curveProject()` projects the centroid of every unknown cluster onto every
+fitted trajectory (`princurve::project_to_curve()`). For each pair it reports
+
+* `distance`: the Euclidean distance between the centroid and its projection
+  (how far the unknown phenotype is from the trajectory);
+* `arc_length`: the position of the projection along the curve; and
+* `estimated_concentration`: the concentration obtained by piecewise-linear
+  interpolation of the reference pairs at that arc length (positions beyond
+  the first or last reference are clamped to the nearest reference).
+
+`best_matches` keeps, for every unknown cluster, the trajectory with the
+smallest distance.
+
+```{r project}
+proj <- curveProject(curves)
+
+proj$best_matches |>
+  transmute(
+    `Unknown cluster` = unknown_cluster,
+    `Best-match compound` = compound,
+    `Estimated concentration` = signif(estimated_concentration, 3),
+    `Distance to curve` = round(distance, 2)
+  ) |>
+  arrange(`Unknown cluster`) |>
+  knitr::kable()
+```
+
+The full `projections` table holds every cluster-by-compound pair, so the
+margin between the best and second-best match can be examined before a
+cluster is interpreted. `plotUnknownProjections()` overlays the unknown
+centroids, their projections, and the estimated concentrations on one
+compound's trajectory:
+
+```{r plot-projection, fig.width = 9, fig.height = 7}
+plotUnknownProjections(curves, proj, compound = focus_compound)
+```
+
+## Feature selection
+
+All feature-selection functions take the normalized data (`dat_norm`) and use
+a two-sided Wilcoxon rank-sum test per feature, the difference in medians as
+the effect size, and a multiplicity correction across features. The tests are
+rank-based, so they are insensitive to the heavy tails that are common in
+morphological features.
+
+### Features that change along a trajectory
+
+`selectFeatureCurve()` splits each known compound's wells at the median arc
+length into a low- and a high-concentration group and tests every feature
+between them (Bonferroni-adjusted by default). To show *how* a feature changes
+rather than only *whether* it changes, the wells are also binned along the
+arc length (`n_bins`) and the ten most significant features are averaged per
+bin (`heatmap_data`).
+
+```{r feature-curve, fig.width = 9, fig.height = 4}
+feat_curve <- selectFeatureCurve(curves, data.norm = dat_norm, p.adjust = "bonferroni", cutoff = 0.05)
+
+feat_curve[[focus_compound]]$top_10 |>
+  mutate(feature = sub("^NonBorder Cells - (CP_ )?", "", feature)) |>
+  select(feature, median_difference, adjusted_p_value, significance) |>
+  knitr::kable(digits = 3)
+
+feat_curve[[focus_compound]]$heatmap_data |>
+  pivot_longer(-c(bin, mean_concentration), names_to = "feature", values_to = "value") |>
+  mutate(feature = sub("^NonBorder Cells - (CP_ )?", "", feature)) |>
+  ggplot(aes(factor(bin), feature, fill = value)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "#2166ac", mid = "white", high = "#b2182b") +
+  labs(
+    x = "Trajectory bin (low to high concentration)", y = NULL, fill = "Mean z",
+    title = paste("Top features along the", focus_compound, "trajectory")
+  ) +
+  theme_minimal(base_size = 9)
+```
+
+### Features that distinguish unknown clusters
+
+`selectFeatureCluster()` compares every pair of unknown clusters and returns
+one row per comparison and feature. The volcano plots show which features
+separate the candidate phenotypes:
+
+```{r feature-cluster, fig.width = 9, fig.height = 4.5}
+feat_cluster <- selectFeatureCluster(clusters, data.norm = dat_norm)
+
+ggplot(feat_cluster, aes(median_difference, -log10(adjusted_p_value), colour = significance)) +
+  geom_point(size = 0.8, alpha = 0.7) +
+  geom_hline(yintercept = -log10(0.05), linetype = "dashed") +
+  geom_vline(xintercept = c(-0.5, 0.5), linetype = "dashed") +
+  facet_wrap(~ comparison) +
+  labs(x = "Median difference (second vs first cluster)", y = expression(-log[10]~"adjusted p")) +
+  theme_minimal()
+```
+
+### Comparing any two groups
+
+`compareCompoundFeatures()` contrasts any two compounds, where `NA` stands for
+the pooled unknown wells, and `compareClusterFeatures()` contrasts two
+clusters of one compound. Both use Benjamini--Hochberg adjustment by default.
+Here the highest-concentration phenotype of cabozantinib is compared with the
+vehicle control:
+
+```{r compare}
+compareCompoundFeatures(dat_norm, first = "DMSO", second = "Cabo") |>
+  head(5) |>
+  mutate(feature = sub("^NonBorder Cells - (CP_ )?", "", feature)) |>
+  knitr::kable(digits = 3)
+```
+
+## Interactive analysis
+
+The same workflow is available as a Shiny application, `cellpacman-shiny`,
+which is distributed alongside the package and calls the functions used in
+this vignette. It is described in `vignette("shiny-app", package = "cellpacman")`.
+
+## References
+
+Hastie, T. and Stuetzle, W. (1989). Principal curves. *Journal of the
+American Statistical Association*, 84(406), 502--516.
+
+Ester, M., Kriegel, H.-P., Sander, J. and Xu, X. (1996). A density-based
+algorithm for discovering clusters in large spatial databases with noise.
+*Proceedings of KDD-96*, 226--231.
+
+McInnes, L., Healy, J. and Melville, J. (2018). UMAP: Uniform Manifold
+Approximation and Projection for dimension reduction. *arXiv:1802.03426*.
+
+## Session info
+
+```{r session}
+sessionInfo()
+```

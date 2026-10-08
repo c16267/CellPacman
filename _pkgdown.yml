@@ -1,0 +1,55 @@
+template:
+  bootstrap: 5
+
+destination: docs
+
+home:
+  title: cellpacman
+  description: Concentration-response analysis of Cell Painting profiles.
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github]
+
+articles:
+  - title: Vignettes
+    navbar: ~
+    contents:
+      - getting-started
+      - shiny-app
+
+reference:
+  - title: Input
+    desc: Reading, validating, and locating Cell Painting tables.
+    contents:
+      - loadCellPainting
+      - readCellPainting
+      - exampleDataPath
+  - title: Workflow
+    desc: The analysis chain, in the order it is run.
+    contents:
+      - normalize
+      - dimReduce
+      - compoundCluster
+      - curveEstimate
+      - curveProject
+  - title: Feature selection
+    contents:
+      - selectFeatureCurve
+      - selectFeatureCluster
+      - compareCompoundFeatures
+      - compareClusterFeatures
+      - summarizeCompoundFeatures
+  - title: Plotting
+    contents:
+      - plotDimred
+      - plotKnownClusters
+      - plotUnknownClusters
+      - plotKnownCurves
+      - plotKnownCurvesPlotly
+      - plotUnknownProjections
+      - plotUnknownProjectionsPlotly
+  - title: Package
+    contents:
+      - cellpacman-package
