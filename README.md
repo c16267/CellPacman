@@ -1,4 +1,4 @@
-<img src="cellpacman_logo.pdf" align="right" height="250" alt="cellpacman logo" />
+<img src="cellpacman_logo.png" align="right" height="250" alt="cellpacman logo" />
 
 # cellpacman
 
