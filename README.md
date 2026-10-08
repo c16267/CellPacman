@@ -1,4 +1,4 @@
-<img src="cellpacman_logo.png" align="right" height="250" alt="cellpacman logo" />
+<img src="cellpacman_logo_v2.png" align="right" height="250" alt="cellpacman logo" />
 
 # cellpacman
 
@@ -219,7 +219,7 @@ cellpacman/
 ├── cellpacman_0.1.0_manual.pdf                   reference manual
 ├── cellpacman-shiny/                             Shiny application (depends on the package)
 │   ├── app.R, R/, www/, tests/, Dockerfile, README.md
-└── CITATION.cff, cellpacman_logo.png, README.md
+└── CITATION.cff, cellpacman_logo_v2.png, README.md
 ```
 
 The dependency runs in one direction only: the application imports the
