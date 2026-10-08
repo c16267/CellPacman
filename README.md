@@ -195,12 +195,13 @@ responsive. It is excluded from the package build and has its own
 
 ```r
 # application packages (once)
+# 1. Application packages (once; cellpacman itself must already be installed)
 install.packages(c("shiny", "bslib", "htmltools", "reactable", "shinycssloaders",
                    "plotly", "ggplot2", "dplyr", "tidyr", "future", "promises", "digest"))
 
-# from the repository root, with cellpacman installed
+# 2. Run straight from GitHub (no clone needed; downloads the repository, ~30 MB)
 Sys.setenv(CELLPACMAN_EXAMPLE_DATA = "true")   # optional: pre-load the example screen
-shiny::runApp("cellpacman-shiny")
+shiny::runGitHub("cellpacman", "c16267", subdir = "cellpacman-shiny")
 ```
 
 Requires `shiny ≥ 1.8.1`, `bslib ≥ 0.10.0`, `shinycssloaders ≥ 1.1.0`.
