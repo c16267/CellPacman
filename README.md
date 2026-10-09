@@ -1,6 +1,6 @@
 <img src="cellpacman_logo_v3.png" align="right" height="250" alt="cellpacman logo" />
 
-# cellpacman
+# CellPacman
 
 `cellpacman` interprets a Cell Painting screen in which **known** compounds
 are tested over a concentration series and **unknown** compounds at a single
