@@ -5,15 +5,17 @@
 `cellpacman` interprets a Cell Painting screen in which **known** compounds
 are tested over a concentration series and **unknown** compounds at a single
 concentration. Each known compound's graded morphological response is
-summarized as a **concentration trajectory** , a principal curve through its
+summarized as a **concentration trajectory**, a principal curve through its
 concentration-ordered DBSCAN centroids in a UMAP embedding of within-plate
-standardized features, and each unknown cluster is projected onto these
-trajectories, which yields the most similar known compound, an interpolated
-effective concentration, and a distance that says how well the match fits.
-Rank-based feature selection then explains *which* morphological features
-drive a trajectory or separate two groups of wells.
+standardized features. Each unknown cluster is projected onto these
+trajectories to estimate a comparable functional concentration and quantify
+the distance between the unknown phenotype and each reference trajectory.
+Rank-based feature selection then identifies the morphological features that
+drive a trajectory or distinguish two groups of wells.
 
-▶ **Interactive app (R Shiny):** `cellpacman::runCellPACMAN()` — the full workflow in a browser ([`inst/shiny/`](inst/shiny))
+▶ **Interactive web app:** [CellPACMAN Shiny App](https://chunglab.bmi.osumc.edu/cellpacman/)
+
+▶ **Run locally in R:** `cellpacman::runCellPACMAN()` — launches the full workflow in a browser ([`inst/shiny/`](inst/shiny))
 
 ▶ **Documentation:** [`vignettes/getting-started.Rmd`](vignettes/getting-started.Rmd) · [`vignettes/shiny-app.Rmd`](vignettes/shiny-app.Rmd) · [`cellpacman_0.1.0_manual.pdf`](cellpacman_0.1.0_manual.pdf)
 
