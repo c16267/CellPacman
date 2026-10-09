@@ -13,7 +13,7 @@ the distance between the unknown phenotype and each reference trajectory.
 Rank-based feature selection then identifies the morphological features that
 drive a trajectory or distinguish two groups of wells.
 
-▶ **Interactive web app:** [CellPACMAN Shiny App](https://chunglab.bmi.osumc.edu/cellpacman/) / https://chunglab.bmi.osumc.edu/cellpacman/
+▶ **Interactive web app:** [CellPACMAN Shiny App](https://chunglab.bmi.osumc.edu/cellpacman/) (https://chunglab.bmi.osumc.edu/cellpacman/)
 
 ▶ **Run locally in R:** `cellpacman::runCellPACMAN()` — launches the full workflow in a browser ([`inst/shiny/`](inst/shiny))
 
