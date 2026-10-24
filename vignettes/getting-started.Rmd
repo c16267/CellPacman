@@ -16,7 +16,7 @@ editor_options:
 knitr::opts_chunk$set(
   collapse = TRUE, comment = "#>",
   message = FALSE, warning = FALSE,
-  fig.width = 7, fig.height = 4.5, out.width = "100%",
+  fig.width = 9, fig.height = 6, out.width = "100%",
   eval = TRUE
 )
 ```
@@ -80,12 +80,19 @@ data frames or as paths to `csv`, `tsv`, `txt`, or `xlsx` files.
 
 ### The example screen
 
-The package ships a Cell Painting screen of 1,920 wells from five 384-well
-plates with 664 well-level features (`exampleDataPath()`). Each plate contains
-three annotated compounds---axitinib (`Axit`), cabozantinib (`Cabo`), and
-dactinomycin (`Dacti`)---at eight concentrations in duplicate, 16 wells of the
-DMSO vehicle control, and 320 unannotated wells that enter the analysis as
-unknown compounds.
+The package ships a fully synthetic screen of 2,000 wells across eight plates,
+with 600 numeric features (`exampleDataPath()`). The filenames are
+`example_features_mock.tsv` and `example_metadata_mock.tsv`. Each plate has
+250 occupied positions on a 384-position grid: three fictitious references
+(`RefA`, `RefB`, `RefC`) at eight concentrations in duplicate, 16 synthetic
+DMSO controls, and 186 unknown wells. In total there are 384 reference wells,
+128 control wells and 1,488 unknown wells.
+
+All measurements and experimental identifiers are synthetic. Concentrations
+use arbitrary tutorial units; the plotting helpers display a unit-neutral
+concentration label. No real compound effects or experimental results are
+represented. This example demonstrates execution and interpretation of the
+software outputs, not biological validation or concentration-recovery accuracy.
 
 ```{r load}
 dat <- loadCellPainting(
@@ -108,14 +115,16 @@ dat$metadata |>
 
 ### Preparing your own input
 
-Instrument software usually exports one wide table per plate that mixes
-features and annotation. The example tables were produced from such an export
-by splitting on the column names; feature columns from Harmony all contain
-`"NonBorder Cells"`. `readCellPainting()` preserves column names that contain
-spaces, so the same split works on a fresh export:
+Instrument software usually exports one wide table that mixes features and
+annotation. The bundled mock tables already have the two-table input structure;
+they were generated synthetically rather than split from an instrument export.
+For your own data, `readCellPainting()` preserves column names containing
+spaces. Feature names from Harmony typically contain `"NonBorder Cells"`, so
+this split can be used for a suitable export (`PlateResults.tsv` stands for
+your own file):
 
 ```{r split, eval = FALSE}
-raw <- readCellPainting("PlateResults.tsv")
+raw <- readCellPainting("PlateResults.tsv")   # your own Harmony export
 
 feature_tbl  <- raw |> select(WellId, contains("NonBorder Cells"))
 metadata_tbl <- raw |> select(!contains("NonBorder Cells"))
@@ -160,7 +169,7 @@ coordinates, stored as `x` and `y` in `reduced_data` together with the
 metadata.
 
 ```{r dimreduce}
-dat_dr <- dimReduce(dat_norm, method = "umap", random_seed = 1)
+dat_dr <- dimReduce(dat_norm, method = "umap", random_seed = 17)
 head(dat_dr$reduced_data[, c("WellId", "Plate", "Compound", "Concentration", "x", "y")])
 ```
 
@@ -172,7 +181,7 @@ plotDimred(dat_dr)
 ```
 
 Colouring the same embedding by plate is a useful check that the within-plate
-standardization has removed plate effects: the five plates should overlap
+standardization has removed plate effects: the eight plates should overlap
 rather than form separate islands.
 
 ```{r plot-plate, fig.height = 5}
@@ -215,14 +224,15 @@ For a known compound, the clusters summarize the concentration series. The
 centroids (diamonds) are labelled with the mean concentration of their wells:
 
 ```{r plot-known-clusters, fig.height = 5}
-plotKnownClusters(clusters, compound = "Cabo")
+plotKnownClusters(clusters, compound = "RefB")
 ```
 
 `eps` controls how finely a concentration series is resolved. A compound whose
 wells form a single connected region at a given `eps` yields only one cluster
 and therefore no trajectory; decreasing `eps` resolves sub-clusters, at the
-cost of labelling more wells as noise. With `eps = 0.5` the dactinomycin wells
-form one cluster, so no curve is fitted for `Dacti` below.
+cost of labelling more wells as noise. With the settings used here, each of the three fictitious references has
+multiple clusters and yields a trajectory. The synthetic DMSO controls form
+one cluster and therefore do not yield a trajectory.
 
 ## Concentration trajectories
 
@@ -230,9 +240,10 @@ form one cluster, so no curve is fitted for `Dacti` below.
 compound by a **principal curve** (Hastie and Stuetzle, 1989) fitted to that compound's
 non-noise wells (`princurve::principal_curve()`, `smoother = "lowess"` by
 default). The fit is initialized at the polyline that connects the cluster
-centroids in order of increasing mean concentration, so the curve runs from
-the low-concentration phenotype to the high-concentration phenotype. The arc
-length $\lambda$ along the fitted curve is a pseudo-concentration axis.
+centroids in order of increasing mean concentration. The fitted curve can
+bend or reorder their projections, so that initialization does not guarantee
+monotone concentration along arc length. This occurs for some references in
+the mock example. The arc length $\lambda$ indexes position along the fitted curve.
 
 Each centroid is mapped to the nearest point of the curve, which gives a set of
 reference pairs $(\lambda_r, c_r)$ of arc length and mean concentration. These
@@ -244,13 +255,13 @@ with fewer are skipped.
 curves <- curveEstimate(dat_dr, method = "princurve", eps = 0.5, minPts = 5, smoother = "lowess")
 
 names(curves$curves)
-curves$curves[["Cabo"]]$ref_points
+curves$curves[["RefB"]]$ref_points
 ```
 
-The remainder of this vignette focuses on cabozantinib (`"Cabo"`).
+The remainder of this vignette focuses on the fictitious reference `RefB`.
 
-```{r plot-known-curve, fig.width = 8, fig.height = 3.5}
-focus_compound <- "Cabo"
+```{r plot-known-curve, fig.width = 9, fig.height = 6}
+focus_compound <- "RefB"
 plotKnownCurves(curves, compound = focus_compound)
 ```
 
@@ -325,7 +336,7 @@ feat_curve[[focus_compound]]$heatmap_data |>
   geom_tile() +
   scale_fill_gradient2(low = "#2166ac", mid = "white", high = "#b2182b") +
   labs(
-    x = "Trajectory bin (low to high concentration)", y = NULL, fill = "Mean z",
+    x = "Trajectory bin (increasing arc length)", y = NULL, fill = "Mean z",
     title = paste("Top features along the", focus_compound, "trajectory")
   ) +
   theme_minimal(base_size = 9)
@@ -354,11 +365,11 @@ ggplot(feat_cluster, aes(median_difference, -log10(adjusted_p_value), colour = s
 `compareCompoundFeatures()` contrasts any two compounds, where `NA` stands for
 the pooled unknown wells, and `compareClusterFeatures()` contrasts two
 clusters of one compound. Both use Benjamini--Hochberg adjustment by default.
-Here the highest-concentration phenotype of cabozantinib is compared with the
-vehicle control:
+Here all wells of fictitious reference `RefB`, pooled across concentrations,
+are compared with the synthetic vehicle controls:
 
 ```{r compare}
-compareCompoundFeatures(dat_norm, first = "DMSO", second = "Cabo") |>
+compareCompoundFeatures(dat_norm, first = "DMSO", second = "RefB") |>
   head(5) |>
   mutate(feature = sub("^NonBorder Cells - (CP_ )?", "", feature)) |>
   knitr::kable(digits = 3)

@@ -49,15 +49,21 @@ packages installed (see the application's `README.md`), start it from the
 repository root:
 
 ```{r run}
-remotes::install_github("c16267/cellpacman")   # or install the tar.gz from the repository
-shiny::runApp("cellpacman-shiny")
+install.packages("cellpacman_0.1.0_mock.tar.gz", repos = NULL, type = "source")
+
+# Use this local copy to keep the mock-data package and app in sync:
+shiny::runApp("/path/to/cellpacman/cellpacman-shiny")
 ```
+
+(`shiny::runApp("cellpacman-shiny")` with a relative path works only when the
+working directory is the repository root; in RStudio, opening `app.R` and
+clicking *Run App* is equivalent.)
 
 Two environment variables configure a session:
 
 | Variable | Default | Effect |
 | --- | --- | --- |
-| `CELLPACMAN_EXAMPLE_DATA` | `false` | `true` pre-loads the example screen shipped with the package (`exampleDataPath()`). |
+| `CELLPACMAN_EXAMPLE_DATA` | `true` | Preloads the synthetic mock screen via `exampleDataPath()`; set `false` for upload-only mode. |
 | `CELLPACMAN_WORKERS` | `1` | Number of background R processes used for parsing and analysis. |
 
 ```{r run-example}
@@ -76,7 +82,11 @@ an inconsistent state.
 
 ### Data
 
-Upload a feature table and a metadata table (`csv`, `tsv`, `txt`, or `xlsx`).
+The app initially loads `example_features_mock.tsv` and
+`example_metadata_mock.tsv`: 2,000 synthetic wells with 600 features, fictitious
+references `RefA`, `RefB`, `RefC`, and synthetic DMSO controls. The default UMAP
+seed is 17. Concentrations use arbitrary tutorial units. You can replace these
+inputs by uploading a feature table and a metadata table (`csv`, `tsv`, `txt`, or `xlsx`).
 Both are parsed and validated with the same rules as `loadCellPainting()`;
 validation messages appear under the upload controls, and the tables are
 previewed on the right.
