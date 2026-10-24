@@ -298,12 +298,21 @@ test_that("readCellPainting dispatches on the file extension", {
 test_that("example data paths resolve to the bundled tables", {
   expect_true(file.exists(exampleDataPath("features")))
   expect_true(file.exists(exampleDataPath("metadata")))
+  expect_identical(basename(exampleDataPath("features")), "example_features_mock.tsv")
+  expect_identical(basename(exampleDataPath("metadata")), "example_metadata_mock.tsv")
+  features <- readCellPainting(exampleDataPath("features"))
+  expect_equal(dim(features), c(2000L, 601L))
+  expect_true(all(vapply(features[-1], is.numeric, logical(1))))
   expect_error(exampleDataPath("other"))
 
   metadata <- readCellPainting(exampleDataPath("metadata"))
   expect_true(all(c("WellId", "Plate", "Compound", "Concentration") %in% names(metadata)))
-  expect_equal(nrow(metadata), 1920L)
-  expect_setequal(stats::na.omit(unique(metadata$Compound)), c("Axit", "Cabo", "Dacti", "DMSO"))
+  expect_equal(nrow(metadata), 2000L)
+  expect_identical(features$WellId, metadata$WellId)
+  expect_equal(sum(is.na(metadata$Compound)), 1488L)
+  expect_equal(length(unique(metadata$Plate)), 8L)
+  expect_equal(as.integer(table(metadata$Plate)), rep(250L, 8))
+  expect_setequal(stats::na.omit(unique(metadata$Compound)), c("RefA", "RefB", "RefC", "DMSO"))
 })
 
 test_that("compareCompoundFeatures accepts NA for the pooled unknown wells", {
