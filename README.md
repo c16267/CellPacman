@@ -74,18 +74,29 @@ Two tables that share a `WellId` key, supplied as data frames or as
 | feature | `WellId`, then numeric features | One row per well; all non-key columns must be numeric. |
 | metadata | `WellId`, `Plate`, `Compound`, `Concentration`, … | `Compound` is the compound name for known wells and `NA` for unknown wells; `Concentration` is numeric. Other columns are carried along. |
 
-Instrument exports (e.g. Harmony) are one wide table; split on the feature
-column names and keep the rest as metadata:
+Instrument exports (e.g. Harmony) are one wide table that mixes both; split
+it on the feature column names and keep the rest as metadata. (`PlateResults.tsv`
+below stands for your own export — the bundled example tables are already
+split, see `exampleDataPath()`.)
 
 ```r
-raw <- readCellPainting("PlateResults.tsv")
+raw <- readCellPainting("PlateResults.tsv")   # your own Harmony export
 feature_tbl  <- dplyr::select(raw, WellId, dplyr::contains("NonBorder Cells"))
 metadata_tbl <- dplyr::select(raw, !dplyr::contains("NonBorder Cells"))
+dat <- loadCellPainting(feature_tbl, metadata_tbl)
 ```
 
 ---
 
 ## Quick start
+
+`exampleDataPath("features")` and `exampleDataPath("metadata")` resolve to
+`example_features_mock.tsv` and `example_metadata_mock.tsv`. The measurements
+and identifiers are fully synthetic, with concentrations in arbitrary tutorial
+units. Real experimental measurements are not included. Eight plates contain
+250 occupied positions each on 384-position grids. The data demonstrate software
+use; biological accuracy or recovery of the simulated concentration is not implied.
+The below visuals may different from the attached mock datasets.
 
 ```r
 library(cellpacman)
