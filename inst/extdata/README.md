@@ -1,19 +1,24 @@
-# Example Cell Painting screen
+# Synthetic Cell Painting tutorial screen
 
-Two tab-separated tables that share the `WellId` key; locate them with
-`cellpacman::exampleDataPath("features")` and `exampleDataPath("metadata")`.
+These two TSV tables contain entirely synthetic data for learning CellPacman.
+They are not experimental measurements and do not represent real compound effects.
 
-| File | Rows | Columns | Content |
-| --- | --- | --- | --- |
-| `example_features.tsv` | 1,920 wells | `WellId` + 664 numeric features | Well-level morphological features ("NonBorder Cells - ..." columns of a Harmony export). |
-| `example_metadata.tsv` | 1,920 wells | `WellId`, `Row`, `Column`, ..., `Compound`, `Concentration`, ..., `Plate` | Plate annotation. |
+- `example_features_mock.tsv`: 2,000 wells, `WellId` + 600 numeric feature columns.
+- `example_metadata_mock.tsv`: 2,000 wells, 20 annotation columns.
+- The shared `WellId` is unique in each table; column names retain the input schema.
+- Eight fictitious plates with 250 occupied wells each contain three fictitious references
+  (`RefA`, `RefB`, `RefC`) at eight concentrations in duplicate, 16 synthetic
+  `DMSO` controls, and 186 unknown wells (`Compound` blank; read as `NA`).
+- Reference concentrations (arbitrary tutorial units): 0.012, 0.036, 0.108, 0.324, 0.972, 2.916, 8.748, 26.244.
+- No original experimental measurements, experiment IDs, or internal server
+  addresses are included. Instrument-style feature names are schema labels only.
 
-Design: five 384-well plates (`Plate1`–`Plate5`). Each plate holds three
-annotated compounds — `Axit` (axitinib), `Cabo` (cabozantinib), `Dacti`
-(dactinomycin) — at eight concentrations in duplicate, 16 wells of the `DMSO`
-vehicle control, and 320 unannotated wells (`Compound` = `NA`) that the
-workflow treats as unknown compounds.
+After including these files in `inst/extdata/` and reinstalling the package, use
+`cellpacman::exampleDataPath("features")` and
+`cellpacman::exampleDataPath("metadata")`.
 
-Both tables were derived from one combined instrument export by splitting on
-the column names (see the "Preparing your own input" section of
-`vignette("getting-started")`).
+Use `RefA`, `RefB`, and `RefC` in examples requiring named references.
+
+Regenerate these exact tables with `python data-raw/generate_toy_data_mock.py`
+from the source tree (Python 3 and NumPy required). No original measurements
+are needed. The companion Shiny app loads these same files by default.
