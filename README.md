@@ -96,12 +96,12 @@ and identifiers are fully synthetic, with concentrations in arbitrary tutorial
 units. Real experimental measurements are not included. Eight plates contain
 250 occupied positions each on 384-position grids. The data demonstrate software
 use; biological accuracy or recovery of the simulated concentration is not implied.
-The below visuals may different from the attached mock datasets.
+
 
 ```r
 library(cellpacman)
 
-## 0 — Example screen bundled with the package -------------------------------
+## 0 — Synthetic mock screen bundled with the package -------------------------------
 dat <- loadCellPainting(
   file.feature  = exampleDataPath("features"),
   file.metadata = exampleDataPath("metadata")
@@ -109,35 +109,36 @@ dat <- loadCellPainting(
 
 ## 1 — Standardize within plate and embed -------------------------------------
 dat_norm <- normalize(dat, method = "z.score", by = "Plate")
-dat_dr   <- dimReduce(dat_norm, method = "umap", random_seed = 1)
+dat_dr   <- dimReduce(dat_norm, method = "umap", random_seed = 17)
 plotDimred(dat_dr)                                  # unknown wells in gray
 
 ## 2 — Cluster each known compound and the unknown wells ----------------------
 clusters <- compoundCluster(dat_dr, method = "dbscan", eps = 0.5, minPts = 5)
 plotUnknownClusters(clusters)
-plotKnownClusters(clusters, compound = "Cabo")
+plotKnownClusters(clusters, compound = "RefB")
 
 ## 3 — Concentration trajectories for the known compounds ---------------------
 curves <- curveEstimate(dat_dr, method = "princurve", eps = 0.5, minPts = 5,
                         smoother = "lowess")
-plotKnownCurves(curves, compound = "Cabo")
+plotKnownCurves(curves, compound = "RefB")
 
 ## 4 — Project unknown clusters onto every trajectory -------------------------
 proj <- curveProject(curves)
 proj$best_matches        # unknown_cluster, compound, estimated_concentration, distance
-plotUnknownProjections(curves, proj, compound = "Cabo")
+plotUnknownProjections(curves, proj, compound = "RefB")
 
 ## 5 — Which features drive a trajectory / separate groups? -------------------
 feat_curve   <- selectFeatureCurve(curves, data.norm = dat_norm)       # low vs high arc length
 feat_cluster <- selectFeatureCluster(clusters, data.norm = dat_norm)   # unknown cluster pairs
-compareCompoundFeatures(dat_norm, first = "DMSO", second = "Cabo")     # any two compounds
-compareCompoundFeatures(dat_norm, first = "Cabo", second = NA)         # NA = pooled unknown wells
+compareCompoundFeatures(dat_norm, first = "DMSO", second = "RefB")     # any two compounds
+compareCompoundFeatures(dat_norm, first = "RefB", second = NA)         # NA = pooled unknown wells
 ```
 
 > **Tip.** `curveProject()` also accepts a second `cellpainting_dimred` object
 > (`newData`) so that unknowns from a later screen can be projected onto
 > trajectories fitted on a reference screen; only the two-dimensional
 > coordinates must be comparable, i.e. both must come from the same embedding.
+
 
 ---
 
